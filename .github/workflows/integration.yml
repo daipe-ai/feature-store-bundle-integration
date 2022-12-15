@@ -1,0 +1,39 @@
+name: Integration tests pipeline
+
+on:
+  workflow_call:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          repository: 'daipe-ai/feature-store-bundle-integration'
+          ref: 'master'
+
+      - name: Install Miniforge
+        uses: conda-incubator/setup-miniconda@v2.1.1
+        with:
+          miniforge-version: 4.10.3-6
+
+      - name: Setup secrets
+        run: |
+          cp .env.dist .env
+          sed -i "s,DBX_TOKEN=,DBX_TOKEN=${{ secrets.DBX_TOKEN }},g" .env
+
+      - name: Setup
+        run: |
+          sudo git clone https://github.com/daipe-ai/feature-store-bundle.git /Workspace/Repos/integration/feature-store-bundle
+          bash env-init.sh -y
+
+      - name: Run integration job
+        run: |
+          eval "$(conda shell.bash hook)"
+          conda activate $PWD/.venv
+          daipe dbx:repo:update --env=dev --repo-url=https://github.com/daipe-ai/feature-store-bundle-integration.git --repo-name=feature-store-bundle-integration --branch=master --force
+          daipe dbx:repo:update --env=dev --repo-url=https://github.com/daipe-ai/feature-store-bundle.git --repo-name=feature-store-bundle --branch=${{ github.head_ref }} --force
+          daipe dbx:job:create-or-update feature-store-bundle-integration-test
+          daipe dbx:job:run --job-name feature-store-bundle-integration-test --wait

@@ -1,0 +1,30 @@
+imports:
+  - jobs.yaml
+  - orchestration.yaml
+
+parameters:
+  featurestorebundle:
+    db_name: '%kernel.environment%_feature_store_integration'
+    base_path: 'dbfs:/%kernel.environment%_feature_store_integration'
+    feature:
+      backend: delta_table
+    metadata:
+      backend: delta_table
+    entities:
+      entity:
+        id_column: "id"
+        id_column_type: "long"
+    widgets:
+      defaults:
+        timestamp: "2022-01-01"
+        target_date_from: "2000-01-01"
+        target_date_to: "2022-01-01"
+        target_time_shift: "-0d"
+    time_windows: ["14d", "30d", "90d"]
+
+  datalakebundle:
+    table:
+      name_template: '%kernel.environment%_{identifier}'
+      defaults:
+        base_path: 'dbfs:/%kernel.environment%_datalake'
+        target_path: !expr 'base_path + "/" + db_identifier + "/" + table_identifier + ".delta"'

@@ -1,0 +1,40 @@
+parameters:
+  daipeproject:
+    jobs:
+      cluster:
+        job_cluster_key: "default_cluster"
+        new_cluster:
+          spark_version: "10.4.x-scala2.12"
+          node_type_id: "Standard_DS3_v2"
+          num_workers: 1
+          spark_env_vars:
+            APP_ENV: "%kernel.environment%"
+
+  jobsbundle:
+    jobs:
+      feature-store-bundle-integration-test:
+        name: 'feature-store-bundle-integration-test'
+        job_clusters:
+          - '%daipeproject.jobs.cluster%'
+        tasks:
+          # clear any existing tables
+          - task_key: 'clear_environment'
+            job_cluster_key: '%daipeproject.jobs.cluster.job_cluster_key%'
+            notebook_task:
+              notebook_path: '/Repos/integration/feature-store-bundle-integration/src/daipeproject/_orchestration/clear'
+
+          # first run - create feature store tables
+          - task_key: 'features_orchestration_create'
+            job_cluster_key: '%daipeproject.jobs.cluster.job_cluster_key%'
+            depends_on:
+              - task_key: 'clear_environment'
+            notebook_task:
+              notebook_path: '/Repos/integration/feature-store-bundle-integration/src/daipeproject/_orchestration/orchestrator'
+
+          # second run - update existing feature store tables
+          - task_key: 'features_orchestration_update'
+            job_cluster_key: '%daipeproject.jobs.cluster.job_cluster_key%'
+            depends_on:
+              - task_key: 'features_orchestration_create'
+            notebook_task:
+              notebook_path: '/Repos/integration/feature-store-bundle-integration/src/daipeproject/_orchestration/orchestrator'
